@@ -22,6 +22,9 @@ public class MainActivity extends AppCompatActivity implements BluetoothAdapter.
         setContentView(R.layout.activity_main);
 
         bManager = (BluetoothManager) getApplicationContext().getSystemService(Context.BLUETOOTH_SERVICE);
+
+        // getApplicationContext().getSystemService()
+
         if(bManager==null)
             Toast.makeText(this,"Can't Searching Bluetooth BLE",Toast.LENGTH_SHORT).show();
         bAdapter = bManager.getAdapter();
