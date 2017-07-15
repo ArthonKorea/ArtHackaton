@@ -7,8 +7,10 @@ import android.app.Service;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothManager;
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.os.IBinder;
 import android.support.v7.app.NotificationCompat;
 import android.util.Log;
@@ -25,6 +27,8 @@ public class BeaconScaning extends Service implements BluetoothAdapter.LeScanCal
     BluetoothAdapter btAdapter;
     HashMap<String,Integer> idMap;
     HashMap<Integer,Boolean> alarmFlags;
+    Context context;
+    BroadcastReceiver mReceiver;
     public BeaconScaning() {
     }
 
@@ -42,6 +46,30 @@ public class BeaconScaning extends Service implements BluetoothAdapter.LeScanCal
         idMap.put("AAAAAAAA8CF1440C87CDE368DAF9C93B",1000);
         idMap.put("AAAAF4118CF1440C87CDE368DAF9C930",2000);
         alarmFlags = new HashMap<>();
+        context = this;
+        IntentFilter intentfilter = new IntentFilter();
+        intentfilter.addAction("init");
+        mReceiver = new BroadcastReceiver(){
+            @Override
+            public void onReceive(Context context, Intent intent) {
+
+                int id = intent.getIntExtra("ID",0);
+
+                Log.d("BC","들어옴"+id);
+                if(alarmFlags.containsKey(id))
+                {
+                    Log.d("BC","2들어옴"+id);
+
+                    //  alarmFlags.put(id,true);
+                    String data = intent.getStringExtra("Data");
+                    notifyScanningBeacon(id,data+"");
+                }
+            }
+        };
+        registerReceiver(mReceiver, intentfilter);
+
+
+
     }
     public int onStartCommand(Intent intent , int flags, int startID)
     {
@@ -70,23 +98,31 @@ public class BeaconScaning extends Service implements BluetoothAdapter.LeScanCal
                if(!alarmFlags.containsKey(id))
                {
                    alarmFlags.put(id,true);
-                   notifyScanningBeacon(id);
+                   final int param = id;
+                   Thread thread = new Thread(new Runnable() {
+                       @Override
+                       public void run() {
+                           HTTPConnector.getDatas("id="+param,"init",param+"",context);
+                       }
+                   });
+                   thread.start();
+
                }
            }
 
         }
     }
-    public void notifyScanningBeacon(int ID){
+    public void notifyScanningBeacon(int ID,String Data){
         NotificationManager nm = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
         PendingIntent pendingIntent = PendingIntent.getActivity(this, 0, new Intent(this, MainActivity.class), PendingIntent.FLAG_UPDATE_CURRENT);
-
+        Log.d("BC","이곳은 노티피케이션!");
         NotificationCompat.Builder mCompatBuilder = new NotificationCompat.Builder(this);
         mCompatBuilder.setSmallIcon(R.drawable.ic_launcher_background);
         mCompatBuilder.setTicker("NotificationCompat.Builder");
         mCompatBuilder.setWhen(System.currentTimeMillis());
         mCompatBuilder.setNumber(10);
         mCompatBuilder.setContentTitle("주위에 미술 작품이 있습니다.");
-        mCompatBuilder.setContentText("작품 : " + ID + "와 대화 하시겠습니까?");
+        mCompatBuilder.setContentText(Data);
         mCompatBuilder.setDefaults(Notification.DEFAULT_SOUND | Notification.DEFAULT_VIBRATE);
         mCompatBuilder.setContentIntent(pendingIntent);
         mCompatBuilder.setAutoCancel(true);
